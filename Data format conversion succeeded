@@ -1,0 +1,151 @@
+---
+title: "0.4_Markdown"
+author: "jiaqi He"
+date: "2022/9/8"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(dplyr)
+
+raw_data_1 <-
+  read.csv("D:/R-project/melting_model/data/new_four_column_hand_complete.csv")
+
+as.data.frame(raw_data_1)
+
+
+####筛选出单一大肠杆菌的观测 Single_EC。
+Single_EC <- filter(raw_data_1,str_detect(`Well.Position`, "^[A-H]1$"))
+
+####筛选出单一假单胞菌的观测 Single_PP。
+Single_PP <- filter(raw_data_1,str_detect(`Well.Position`, "^[A-H]2$"))
+
+####将 Single_EC 与 Single_PP 数据集合并，作为学习数据集 Single_EC_PP_learning。
+Single_EC_PP_learning <- rbind(Single_EC,Single_PP)
+str(Single_EC_PP_learning)
+View(Single_EC_PP_learning)
+
+write.csv(Single_EC_PP_learning,"D:/R-project/melting_model/data/Single_EC_PP_learning.csv")
+
+```
+
+
+```{r}
+ggplot(Single_EC_PP_learning, aes(Temperature, Derivative, color = as_factor(Well.Position))) +
+  geom_line()
+
+```
+```{r}
+## 调整数据结构：列名为温度，行名为 Well.Position，每行观测为荧光值的导数。最后一列为因变量 concentration。
+as.data.frame(Single_EC_PP_learning)
+
+Single_EC_PP_learning_try <- Single_EC_PP_learning %>% 
+  pivot_wider( names_from = Temperature,
+               values_from = Derivative)
+str(Single_EC_PP_learning_try)
+  
+## 将因变量 concentration 这一列放到最后。
+Single_EC_PP_learning_try <- Single_EC_PP_learning_try %>% select(-concentration,everything())
+
+write.csv(Single_EC_PP_learning_try,"D:/R-project/melting_model/data/Single_EC_PP_learning_try.csv")
+
+## 对学习数据集拟合线性模型
+all_colnames <- colnames(Single_EC_PP_learning_try)
+str(all_colnames)
+
+all_temperature <- all_colnames[2:189]
+str(all_temperature)
+as.factor(all_temperature)
+
+## 不清楚如何将 all_temperature 中的自变量相加，所以去掉 Well.Position 这个变量，剩下的都是all_temperature 中的自变量
+
+fit.lm <- lm(concentration ~ -Well.Position,
+       data = Single_EC_PP_learning_try)
+
+## 查看建模结果
+summary(fit.lm)
+```
+
+```{r}
+####提取模型的系数估计值。
+coefficients(fit.lm)
+```
+```{r}
+####提取模型的系数的置信区间，level=0.95 表示提取95%的置信区间。
+confint(fit.lm,level = 0.95)
+```
+
+```{r}
+####提取模型的因变量拟合值。
+yhat <- fitted(fit.lm)
+str(yhat)
+View(yhat)
+```
+
+```{r}
+####提取模型的残差。
+resid <- residuals(fit.lm)
+View(resid)
+```
+
+
+```{r}
+####将绘图窗口分成2*2的矩阵。
+par(mfrow=c(2,2))
+library(ggplot2)
+####指定绘图区域离下边界、左边界、上边界和右边界的距离（单位为文本行数），以便能画下所有诊断图。
+par(mar(c(2.5,2.5,1.5,1.5)))
+
+####画模型诊断图。
+plot(fit.lm,which = c(1:4))
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+# 
+
+# 
+
+
+```
+
+```{r}
+# 
+
+```
+
+
+
+
+
+
+
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
